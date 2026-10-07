@@ -1,0 +1,901 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "video-agent",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        -256
+      ],
+      "id": "507710a0-e228-495a-84df-bacc876a4761",
+      "name": "Webhook",
+      "webhookId": "8e621860-1a1d-4001-81e2-f6ec1ac75972"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.content;\n\nconst cleanContent = content\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst data = JSON.parse(cleanContent);\n\nreturn data.scenes.map(scene => ({\n  json: scene\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "71ad6a31-0848-4017-b2c8-ad173e4853b2",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -48
+      ],
+      "id": "6f7629a8-a29f-4417-91bd-77c38281b772",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "https://api.pexels.com/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.search_keywords }}"
+            },
+            {
+              "name": "per_page",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "eSabKjvyDJSxFT3tyjYWe3AiAfuq7uHZqoRVfct833hQHjKv8G91jp2T"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -448,
+        144
+      ],
+      "id": "28c03fd8-431c-4908-805c-188c3435711c",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const photo = $json.photos[0];\n\nreturn [\n  {\n    json: {\n      scene_number: $json.scene_number,\n      search_keywords: $json.search_keywords,\n      image_url: photo.src.portrait\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        144
+      ],
+      "id": "2c783c70-d3f2-43fe-bb16-86f88114c443",
+      "name": "Extract Visual URL"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e23e9944-2091-472c-817b-4fe60163d7ee",
+              "name": "user_prompt",
+              "value": "={{$json.body.prompt}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -288,
+        -256
+      ],
+      "id": "ab4a44bd-6b3c-4f7a-ab5c-1f67ed577623",
+      "name": "Planning Agent"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI Social Media Content Planning Agent.\n\nAnalyze the user's request and create a complete video plan.\n\nDetermine:\n\n1. topic\n2. targetAudience\n3. platform\n4. videoDuration\n5. tone\n6. contentStyle\n7. mainMessage\n8. hookStrategy\n\nIf information is missing, make intelligent decisions automatically.\n\nIMPORTANT:\n- Return ONLY valid JSON.\n- Do NOT write any explanation before or after the JSON.\n- Do NOT use markdown.\n- Do NOT use ```json.\n- The first character of your response must be {.\n- The last character of your response must be }.\n\nUse exactly this JSON structure:\n\n{\n  \"topic\": \"\",\n  \"targetAudience\": \"\",\n  \"platform\": \"\",\n  \"videoDuration\": 30,\n  \"tone\": \"\",\n  \"contentStyle\": \"\",\n  \"mainMessage\": \"\",\n  \"hookStrategy\": \"\"\n}\n\nUser Request:\n{{$json.user_prompt}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -256
+      ],
+      "id": "99560044-bffd-4670-a2f9-71df1b70a042",
+      "name": "Parse Planning JSON",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.content;\n\nconst cleanContent = content\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst plan = JSON.parse(cleanContent);\n\nreturn [\n  {\n    json: plan\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -256
+      ],
+      "id": "76371a77-07de-46d7-98ef-05e16a87c2fd",
+      "name": "Script Agent"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a professional short-form social media video script writer.\n\nCreate a narration script based on the video plan provided below.\n\nRequirements:\n- Start with a powerful hook.\n- Use simple and engaging language.\n- Make the script suitable for the requested platform.\n- Match the requested video duration.\n- Provide useful and interesting information.\n- End with a strong conclusion.\n- Add a CTA only if appropriate.\n- Return ONLY the narration script.\n- Do not return JSON.\n- Do not add headings or explanations.\n\nVideo Plan:\n\n{{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -256
+      ],
+      "id": "d0d58b13-3a0c-4e02-a486-08f20b4623cd",
+      "name": "Save Script",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e671d74e-7464-4d44-86d4-c4f4a1e500b4",
+              "name": "script",
+              "value": "={{ $json.content.replace(/^\"|\"$/g, '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -448,
+        -48
+      ],
+      "id": "72559fb4-6cd9-4317-97b5-d72078956044",
+      "name": "Scene Agent"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a professional video director.\n\nYou will receive a video narration script.\n\nYour job is to divide the ACTUAL SCRIPT into multiple scenes.\n\nIMPORTANT RULES:\n- Use the actual script provided below.\n- Do NOT create a new script.\n- Do NOT leave narration empty.\n- Every scene must contain actual narration taken from the script.\n- Every scene must contain a useful visual_description.\n- Every scene must contain useful search_keywords.\n- Divide the actual narration naturally across the scenes.\n- Total duration must be exactly 30 seconds.\n- Return ONLY valid JSON.\n- Do NOT write explanations.\n- Do NOT write notes.\n- Do NOT use markdown.\n- Do NOT use ```json.\n\nRequired format:\n\n{\n  \"scenes\": [\n    {\n      \"scene_number\": 1,\n      \"narration\": \"actual narration from the script\",\n      \"visual_description\": \"description of what should be shown\",\n      \"search_keywords\": \"keywords for finding the visual\",\n      \"duration_seconds\": 5\n    }\n  ]\n}\n\nACTUAL VIDEO SCRIPT:\n{{ $json.script }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -48
+      ],
+      "id": "0388b64c-cfd7-41aa-bdc2-a4708778d321",
+      "name": "Split Scenes",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a visual planning agent.\n\nYour ONLY task is to convert the current scene information into JSON.\n\nIMPORTANT:\n- Return ONLY ONE JSON object.\n- Do NOT explain anything.\n- Do NOT review code.\n- Do NOT write JavaScript.\n- Do NOT write Markdown.\n- Do NOT write \"Code Review\".\n- Do NOT use ```json.\n- Do NOT include any text before or after the JSON.\n\nUse exactly this structure:\n\n{\n  \"scene_number\": 1,\n  \"visual_description\": \"\",\n  \"search_keywords\": \"\",\n  \"duration_seconds\": 5\n}\n\nCurrent Scene:\n\nScene Number:\n{{ $json.scene_number }}\n\nNarration:\n{{ $json.narration }}\n\nOriginal Visual Description:\n{{ $json.visual_description }}\n\nOriginal Search Keywords:\n{{ $json.search_keywords }}\n\nDuration:\n{{ $json.duration_seconds }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -16
+      ],
+      "id": "2dceb7a5-95bf-48f5-b13b-7cd3d6b1930d",
+      "name": "Visual Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\nfor (const item of $input.all()) {\n  let content = item.json.content;\n\n  try {\n    content = content\n      .replace(/```json/g, '')\n      .replace(/```/g, '')\n      .trim();\n\n    // If the AI forgot the final closing brace, add it\n    if (!content.endsWith('}')) {\n      content += '}';\n    }\n\n    const data = JSON.parse(content);\n\n    output.push({\n      json: data\n    });\n\n  } catch (error) {\n    output.push({\n      json: {\n        parse_error: true,\n        original_content: content,\n        error: error.message\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -16
+      ],
+      "id": "2996a586-f97c-46f6-80d3-1df775f81498",
+      "name": "Parse Visual JSON"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        144
+      ],
+      "id": "28303aa9-d6bd-473a-8465-a49d01fcfc04",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/files/visuals/scene_{{$json.scene_number}}.jpg",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        144
+      ],
+      "id": "5166e50c-59c9-4bde-b1d2-8af95ec38ff6",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bc8a2a6-b8c4-4089-839e-26e8510ec576",
+              "name": "script",
+              "value": "=Artificial Intelligence is changing the world. AI helps students learn better, improves healthcare, powers self-driving cars, and creates exciting opportunities for the future.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        144
+      ],
+      "id": "0a3fabb8-0a3f-4797-8eb1-653d43135689",
+      "name": "Prepare Complete Script"
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/files/audio/voiceover.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        144
+      ],
+      "id": "b2e2f70b-f0c1-4c9c-87b6-e45d111e77e0",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "533372ec-8a07-4f33-a48a-80ff89281c89",
+              "name": " audio_path",
+              "value": "/files/audio/voiceover.mp3",
+              "type": "string"
+            },
+            {
+              "id": "e46446b2-4513-4e57-8c43-458aa7208334",
+              "name": "subtitle_path",
+              "value": "/files/subtitles/captions.srt",
+              "type": "string"
+            },
+            {
+              "id": "fb3f2d6a-2a42-47dd-98bd-9f153f05d571",
+              "name": "video_output_path",
+              "value": "/files/videos/final_video.mp4",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -544,
+        336
+      ],
+      "id": "f09db47a-0a00-44ce-8ea3-d35e6b12db99",
+      "name": "prepare video files"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:5000/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"audio_path\": \"{{$json.audio_path}}\",\n  \"subtitle_path\": \"{{$json.subtitle_path}}\",\n  \"video_output_path\": \"{{$json.video_output_path}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -320,
+        336
+      ],
+      "id": "c70012f0-b489-4f2d-bd74-2822b1901c38",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9f782018-cc3e-486a-8b57-34761f89c11b",
+              "leftValue": true,
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -96,
+        336
+      ],
+      "id": "abf0513a-6109-481d-af4a-75dd886b0f81",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Quality Control AI Agent.\n\nCheck the following project output.\n\nEvaluate:\n1. Is the script complete?\n2. Are all scenes available?\n3. Are visuals available?\n4. Is voiceover available?\n5. Are captions available?\n6. Was the final video created?\n\nFINAL VIDEO STATUS:\n{{ $json.success }}\n\nFINAL VIDEO PATH:\n{{ $json.video_path }}\n\nReturn ONLY valid JSON.\nDo not add explanations.\nDo not add markdown.\nDo not add code fences.\n\nReturn exactly this format:\n\n{\n  \"status\": \"PASS\",\n  \"quality_score\": 100,\n  \"issues\": []\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        192,
+        352
+      ],
+      "id": "92419166-2ba8-4562-b886-5b06d5649c14",
+      "name": "Quality Control Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9899e03f-b337-426d-9a3b-22d7448e9f82",
+              "leftValue": "={{ JSON.parse($json.content).status === \"PASS\" }}",
+              "rightValue": "PASS",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        352
+      ],
+      "id": "41e3953e-f853-44f1-b784-804325e998ee",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "llama3.2:latest",
+          "mode": "list",
+          "cachedResultName": "llama3.2:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert Social Media SEO and Content Marketing Agent.\n\nAnalyze the following video topic and script.\n\nGenerate optimized content for YouTube Shorts and Instagram Reels.\n\nCreate:\n1. SEO-friendly YouTube Title\n2. YouTube Description\n3. YouTube Keywords\n4. YouTube Tags\n5. Instagram Caption\n6. Instagram Hashtags\n7. Call to Action\n\nRequirements:\n- Make the title attractive and searchable.\n- Use relevant keywords naturally.\n- Do not use keyword stuffing.\n- Make the caption engaging.\n- Create relevant hashtags.\n- Optimize the content separately for YouTube and Instagram.\n\nTOPIC:\nArtificial Intelligence\n\nVIDEO SCRIPT:\n{{ $('Prepare Complete Script').item.json.script }}\n\nReturn ONLY valid JSON.\nIMPORTANT:\nReturn ONLY the JSON object below.\nDo NOT write explanations.\nDo NOT use Markdown.\nDo NOT use **.\nDo NOT write \"Here's the optimized content\".\nDo NOT add notes before or after the JSON.\n\nUse exactly these keys:\n\n{\n  \"youtube_title\": \"\",\n  \"youtube_description\": \"\",\n  \"youtube_keywords\": [],\n  \"youtube_tags\": [],\n  \"instagram_caption\": \"\",\n  \"instagram_hashtags\": [],\n  \"call_to_action\": \"\"\n}"
+            },
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        768,
+        336
+      ],
+      "id": "0852f92a-0c83-4e5e-a4bd-f172753fb948",
+      "name": "SEO Agent",
+      "credentials": {
+        "ollamaApi": {
+          "id": "pvT7dNpkqHyCil6T",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.content;\n\nconst cleanContent = content\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst data = JSON.parse(cleanContent);\n\nreturn [\n  {\n    json: data\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        336
+      ],
+      "id": "d5f68fe7-ae35-4c66-9a29-415c81a07438",
+      "name": "Parse SEO JSON"
+    },
+    {
+      "parameters": {
+        "outputFieldName": "current_date",
+        "options": {
+          "timezone": "Asia/Kolkata"
+        }
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        528
+      ],
+      "id": "a68b22be-a4f6-4493-bdf0-659e74e56d5f",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $now.plus({ minutes: 5 }).toISO() }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        528
+      ],
+      "id": "7fa8e11f-b9d1-4476-b527-2b4d5b26b05d",
+      "name": "Wait",
+      "webhookId": "b487e6e5-5763-4840-97b4-79c9a3efbcc0"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Planning Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Visual Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Visual URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planning Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Planning JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Planning JSON": {
+      "main": [
+        [
+          {
+            "node": "Script Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Script Agent": {
+      "main": [
+        [
+          {
+            "node": "Save Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Script": {
+      "main": [
+        [
+          {
+            "node": "Scene Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scene Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Scenes": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Visual Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Visual JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Visual JSON": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Visual URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Prepare Complete Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Complete Script": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "prepare video files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare video files": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Quality Control Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Control Agent": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "SEO Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SEO Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse SEO JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SEO JSON": {
+      "main": [
+        [
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7bae5d04-f7df-4d6c-b8d3-0cbe9f249335",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e65360104654594091b828c0cf249481e477966d2094e41df77a034581c1c51b"
+  },
+  "nodeGroups": [],
+  "id": "znz5YsDgsGBtUrmF",
+  "tags": []
+}
